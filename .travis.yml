@@ -1,0 +1,12 @@
+sudo: false
+language: python
+python:
+  - "3.4"
+install:
+  pip install -r requirements.txt
+script:
+  coverage run --omit=*.tox/*,*db_migrations/*,*env/* -m unittest
+after_success:
+  coveralls
+notifications:
+  email: false
