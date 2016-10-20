@@ -10,15 +10,6 @@ class User(db.Model, UserMixin):
     full_name = db.Column(db.String(255))
     active = db.Column(db.Boolean())
 
-    # Serialization for json requests
-    @property
-    def serialize(self):
-        return {
-            'id': self.id,
-            'email': self.email,
-            'full_name': self.full_name,
-        }
-
     # Representation of model
     def __repr__(self):
         return (self.id)
