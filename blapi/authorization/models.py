@@ -10,4 +10,4 @@ class User(db.Model):
 
     # Representation of model
     def __repr__(self):
-        return (self.id)
+        return (str(self.id))

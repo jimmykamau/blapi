@@ -36,7 +36,6 @@ class Registration(Resource):
 
     def post(self):
         json_data = request.get_json()
-
         if not json_data:
             abort(400, message="Empty request")
 
@@ -54,6 +53,6 @@ class Registration(Resource):
             db.session.commit()
             return {
                 'message': "{} created successfully".format(data['full_name'])
-            }, 200
+            }, 201
         except Exception:
-            abort(403, message="User not created")
+            abort(500, message="User not created")
