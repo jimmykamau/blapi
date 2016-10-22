@@ -76,13 +76,24 @@ class BucketlistControl(Resource):
             db.session.commit()
             modified_bucketlist = bucketlist_schema.dump(bucketlist)
             return {'bucketlist': modified_bucketlist}, 201
-
         except Exception as exception_message:
             abort(500, message=exception_message)
 
     @jwt_required()
-    def delete(self):
-        pass
+    def delete(self, bucketlist_id):
+        try:
+            bucketlist_items = BucketlistItems.query.filter_by(
+                bucketlist_id=bucketlist_id).all()
+            bucketlist = Bucketlist.query.filter_by(
+                created_by=int(str(current_identity)), id=bucketlist_id).one()
+            db.session.delete(
+                bucketlist_item for bucketlist_item in bucketlist_items) \
+                if bucketlist_items != [] else None
+            db.session.delete(bucketlist)
+            db.session.commit()
+            return {'message': 'Bucket-list deleted successfully'}
+        except Exception as exception_message:
+            abort(500, message=exception_message)
 
 
 class BucketlistItemControl(Resource):
