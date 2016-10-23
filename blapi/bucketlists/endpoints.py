@@ -16,11 +16,11 @@ bucketlist_items_schema = BucketlistItemsSchema(many=True)
 class BucketlistControl(Resource):
 
     @jwt_required()
-    def get(self, id=False):
+    def get(self, bucketlist_id=False):
         try:
             bucketlists = Bucketlist.query.filter_by(
-                created_by=int(str(current_identity)), id=id).all() if id \
-                else Bucketlist.query.filter_by(
+                created_by=int(str(current_identity)), id=bucketlist_id).all()\
+                if bucketlist_id else Bucketlist.query.filter_by(
                 created_by=int(str(current_identity))).all()
             bucketlists_result = bucketlist_schema.dump(bucketlists)
             return {'bucketlists': bucketlists_result}, 200
@@ -58,8 +58,27 @@ class BucketlistControl(Resource):
             abort(500, message=exception_message)
 
     @jwt_required()
-    def put(self):
-        pass
+    def put(self, bucketlist_id):
+        json_data = request.get_json()
+        if not json_data:
+            abort(400, message="Empty request")
+
+        data, errors = bucketlist_schema.load(json_data, partial=True)
+        if errors:
+            abort(422, message=errors)
+
+        try:
+            bucketlist = Bucketlist.query.filter_by(
+                created_by=int(str(current_identity)), id=bucketlist_id).one()
+            bucketlist.name = data['name']
+            bucketlist.date_modified = datetime.utcnow()
+            db.session.add(bucketlist)
+            db.session.commit()
+            modified_bucketlist = bucketlist_schema.dump(bucketlist)
+            return {'bucketlist': modified_bucketlist}, 201
+
+        except Exception as exception_message:
+            abort(500, message=exception_message)
 
     @jwt_required()
     def delete(self):
