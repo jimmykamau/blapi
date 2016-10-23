@@ -9,14 +9,25 @@ from .models import Bucketlist, BucketlistItems
 from .schemas import BucketlistSchema, BucketlistItemsSchema
 
 
-bucketlist_schema = BucketlistSchema()
-bucketlist_items_schema = BucketlistItemsSchema()
+bucketlist_schema = BucketlistSchema(many=True)
+bucketlist_items_schema = BucketlistItemsSchema(many=True)
 
 
 class BucketlistControl(Resource):
 
     @jwt_required()
-    def get(self):
+    def get(self, id=False):
+        try:
+            bucketlists = Bucketlist.query.filter_by(
+                created_by=int(str(current_identity))).all()
+            bucketlists_result = bucketlist_schema.dump(bucketlists)
+            return {'bucketlists': bucketlists_result}, 200
+        except NoResultFound:
+            abort(
+                400,
+                message="No bucket-list with {} as owner"
+                .format(current_identity)
+            )
         return {'user': str(current_identity)}, 200
 
     @jwt_required()
