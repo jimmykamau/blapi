@@ -14,12 +14,17 @@ api = Api(app)
 
 from blapi.authorization.endpoints import \
     Registration, authenticate, identity
+from blapi.bucketlists.endpoints import \
+    BucketlistControl
 
 
 jwt = JWT(app, authenticate, identity)
 
+
 api.add_resource(
     Registration, '/auth/register', '/auth/register/<user_id>')
+api.add_resource(
+    BucketlistControl, '/bucketlists')
 
 
 if __name__ == '__main__':
