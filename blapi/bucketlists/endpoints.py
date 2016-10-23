@@ -69,57 +69,73 @@ class BucketlistControl(Resource):
 
     @jwt_required()
     def put(self, bucketlist_id):
-        json_data = request.get_json()
-        if not json_data:
-            abort(400, message="Empty request")
+        if check_user_owns_bucketlist(
+                int(str(current_identity)), bucketlist_id):
+            json_data = request.get_json()
+            if not json_data:
+                abort(400, message="Empty request")
 
-        data, errors = bucketlist_schema.load(json_data, partial=True)
-        if errors:
-            abort(422, message=errors)
+            data, errors = bucketlist_schema.load(json_data, partial=True)
+            if errors:
+                abort(422, message=errors)
 
-        try:
-            bucketlist = Bucketlist.query.filter_by(
-                created_by=int(str(current_identity)), id=bucketlist_id).one()
-            bucketlist.name = data['name']
-            bucketlist.date_modified = datetime.utcnow()
-            db.session.add(bucketlist)
-            db.session.commit()
-            modified_bucketlist = bucketlist_schema.dump(bucketlist)
-            return {'bucketlist': modified_bucketlist}, 201
-        except Exception as exception_message:
-            abort(500, message=exception_message)
+            try:
+                bucketlist = Bucketlist.query.filter_by(
+                    created_by=int(str(current_identity)),
+                    id=bucketlist_id).one()
+                bucketlist.name = data['name']
+                bucketlist.date_modified = datetime.utcnow()
+                db.session.add(bucketlist)
+                db.session.commit()
+                modified_bucketlist = bucketlist_schema.dump(bucketlist)
+                return {'bucketlist': modified_bucketlist}, 201
+            except Exception as exception_message:
+                abort(500, message=exception_message)
+        else:
+            abort(403,
+                  message="User doesn't own bucketlist or " +
+                  "bucketlist doesn't exist")
 
     @jwt_required()
     def delete(self, bucketlist_id):
-        try:
-            bucketlist_items = BucketlistItems.query.filter_by(
-                bucketlist_id=bucketlist_id).all()
-            bucketlist = Bucketlist.query.filter_by(
-                created_by=int(str(current_identity)), id=bucketlist_id).one()
-            db.session.delete(
-                bucketlist_item for bucketlist_item in bucketlist_items) \
-                if bucketlist_items != [] else None
-            db.session.delete(bucketlist)
-            db.session.commit()
-            return {'message': 'Bucket-list deleted successfully'}
-        except Exception as exception_message:
-            abort(500, message=exception_message)
+        if check_user_owns_bucketlist(
+                int(str(current_identity)), bucketlist_id):
+            try:
+                bucketlist_items = BucketlistItems.query.filter_by(
+                    bucketlist_id=bucketlist_id).all()
+                bucketlist = Bucketlist.query.filter_by(
+                    created_by=int(str(current_identity)),
+                    id=bucketlist_id).one()
+                if len(bucketlist_items) != 0:
+                    for bucketlist_item in bucketlist_items:
+                        db.session.delete(bucketlist_item)
+                db.session.delete(bucketlist)
+                db.session.commit()
+                return {'message': 'Bucket-list deleted successfully'}
+            except Exception as exception_message:
+                abort(500, message=exception_message)
+        else:
+            abort(403,
+                  message="User doesn't own bucketlist or " +
+                  "bucketlist doesn't exist")
 
 
 class BucketlistItemControl(Resource):
 
     @jwt_required()
     def get(self, bucketlist_id):
-        try:
-            bucketlist_items = BucketlistItems.query.filter_by(
-                bucketlist_id=bucketlist_id).all()
-            bucketlist_items_result = \
-                bucketlist_items_schema.dump(bucketlist_items)
-            return {'bucketlist items': bucketlist_items_result}, 200
-        except NoResultFound:
-            abort(
-                400,
-                message="No bucket-list items for specified bucket-list")
+        if check_user_owns_bucketlist(
+                int(str(current_identity)), bucketlist_id):
+            try:
+                bucketlist_items = BucketlistItems.query.filter_by(
+                    bucketlist_id=bucketlist_id).all()
+                bucketlist_items_result = \
+                    bucketlist_items_schema.dump(bucketlist_items)
+                return {'bucketlist items': bucketlist_items_result}, 200
+            except NoResultFound:
+                abort(
+                    400,
+                    message="No bucket-list items for specified bucket-list")
 
     @jwt_required()
     def post(self, bucketlist_id):
@@ -136,7 +152,7 @@ class BucketlistItemControl(Resource):
             try:
                 new_bucketlist_item = BucketlistItems(
                     name=data['name'], date_created=datetime.utcnow(),
-                    date_modified=datetime.utcnow(), done=False,
+                    date_modified=datetime.utcnow(), done=data['done'],
                     bucketlist_id=int(bucketlist_id)
                 )
                 db.session.add(new_bucketlist_item)
@@ -169,6 +185,7 @@ class BucketlistItemControl(Resource):
                 bucketlist_item = BucketlistItems.query.filter_by(
                     bucketlist_id=bucketlist_id, id=item_id).one()
                 bucketlist_item.name = data['name']
+                bucketlist_item.done = data['done']
                 bucketlist_item.date_modified = datetime.utcnow()
                 db.session.add(bucketlist_item)
                 db.session.commit()
@@ -186,7 +203,14 @@ class BucketlistItemControl(Resource):
     def delete(self, bucketlist_id, item_id):
         if check_user_owns_bucketlist(
                 int(str(current_identity)), bucketlist_id):
-            pass
+            try:
+                bucketlist_item = BucketlistItems.query.filter_by(
+                    bucketlist_id=bucketlist_id, id=item_id).one()
+                db.session.delete(bucketlist_item)
+                db.session.commit()
+                return {'message': 'Bucket-list item deleted successfully'}
+            except Exception as exception_message:
+                abort(500, message=exception_message)
         else:
             abort(403,
                   message="User doesn't own bucketlist or " +

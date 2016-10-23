@@ -11,7 +11,7 @@ class BucketlistItemsSchema(Schema):
     name = fields.Str(required=True)
     date_created = fields.DateTime()
     date_modified = fields.DateTime()
-    done = fields.Bool()
+    done = fields.Bool(required=True)
     bucketlist_id = fields.Int()
 
 
