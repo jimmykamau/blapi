@@ -19,6 +19,8 @@ class BucketlistControl(Resource):
     def get(self, id=False):
         try:
             bucketlists = Bucketlist.query.filter_by(
+                created_by=int(str(current_identity)), id=id).all() if id \
+                else Bucketlist.query.filter_by(
                 created_by=int(str(current_identity))).all()
             bucketlists_result = bucketlist_schema.dump(bucketlists)
             return {'bucketlists': bucketlists_result}, 200

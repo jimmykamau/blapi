@@ -24,7 +24,7 @@ jwt = JWT(app, authenticate, identity)
 api.add_resource(
     Registration, '/auth/register', '/auth/register/<user_id>')
 api.add_resource(
-    BucketlistControl, '/bucketlists')
+    BucketlistControl, '/bucketlists', '/bucketlists/<id>')
 
 
 if __name__ == '__main__':
