@@ -21,3 +21,5 @@ class BucketlistSchema(Schema):
     date_created = fields.DateTime()
     date_modified = fields.DateTime()
     created_by = fields.Int()
+    items = fields.Nested(
+        BucketlistItemsSchema, key='id', many=True, dump_only=True)

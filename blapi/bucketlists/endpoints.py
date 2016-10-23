@@ -9,8 +9,19 @@ from .models import Bucketlist, BucketlistItems
 from .schemas import BucketlistSchema, BucketlistItemsSchema
 
 
-bucketlist_schema = BucketlistSchema(many=True)
+bucketlist_schema = BucketlistSchema()
+bucketlists_schema = BucketlistSchema(many=True)
+bucketlist_item_schema = BucketlistItemsSchema()
 bucketlist_items_schema = BucketlistItemsSchema(many=True)
+
+
+def check_user_owns_bucketlist(current_user, bucketlist_id):
+        try:
+            Bucketlist.query.filter_by(
+                created_by=current_user, id=bucketlist_id).one()
+            return True
+        except NoResultFound:
+            return False
 
 
 class BucketlistControl(Resource):
@@ -22,7 +33,7 @@ class BucketlistControl(Resource):
                 created_by=int(str(current_identity)), id=bucketlist_id).all()\
                 if bucketlist_id else Bucketlist.query.filter_by(
                 created_by=int(str(current_identity))).all()
-            bucketlists_result = bucketlist_schema.dump(bucketlists)
+            bucketlists_result = bucketlists_schema.dump(bucketlists)
             return {'bucketlists': bucketlists_result}, 200
         except NoResultFound:
             abort(
@@ -30,7 +41,6 @@ class BucketlistControl(Resource):
                 message="No bucket-list with {} as owner"
                 .format(current_identity)
             )
-        return {'user': str(current_identity)}, 200
 
     @jwt_required()
     def post(self):
@@ -98,14 +108,55 @@ class BucketlistControl(Resource):
 
 class BucketlistItemControl(Resource):
 
-    def get(self):
-        pass
+    @jwt_required()
+    def get(self, bucketlist_id):
+        try:
+            bucketlist_items = BucketlistItems.query.filter_by(
+                bucketlist_id=bucketlist_id).all()
+            bucketlist_items_result = \
+                bucketlist_items_schema.dump(bucketlist_items)
+            return {'bucketlist items': bucketlist_items_result}, 200
+        except NoResultFound:
+            abort(
+                400,
+                message="No bucket-list items for specified bucket-list")
 
-    def post(self):
-        pass
+    @jwt_required()
+    def post(self, bucketlist_id):
+        if check_user_owns_bucketlist(
+                int(str(current_identity)), bucketlist_id):
+            json_data = request.get_json()
+            if not json_data:
+                abort(400, message="Empty request")
 
+            data, errors = bucketlist_item_schema.load(json_data, partial=True)
+            if errors:
+                abort(422, message=errors)
+
+            try:
+                new_bucketlist_item = BucketlistItems(
+                    name=data['name'], date_created=datetime.utcnow(),
+                    date_modified=datetime.utcnow(), done=False,
+                    bucketlist_id=int(bucketlist_id)
+                )
+                db.session.add(new_bucketlist_item)
+                db.session.commit()
+                created_bucketlist_item = \
+                    bucketlist_item_schema.dump(new_bucketlist_item)
+                return {
+                    'bucketlist': created_bucketlist_item
+                }, 201
+            except Exception as exception_message:
+                abort(500, message=exception_message)
+        else:
+            abort(403,
+                  message="User doesn't own bucketlist or " +
+                  "bucketlist doesn't exist")
+
+    @jwt_required()
     def put(self):
         pass
 
+    @jwt_required()
     def delete(self):
         pass
