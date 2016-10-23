@@ -154,9 +154,40 @@ class BucketlistItemControl(Resource):
                   "bucketlist doesn't exist")
 
     @jwt_required()
-    def put(self):
-        pass
+    def put(self, bucketlist_id, item_id):
+        if check_user_owns_bucketlist(
+                int(str(current_identity)), bucketlist_id):
+            json_data = request.get_json()
+            if not json_data:
+                abort(400, message="Empty request")
+
+            data, errors = bucketlist_item_schema.load(json_data)
+            if errors:
+                abort(422, message=errors)
+
+            try:
+                bucketlist_item = BucketlistItems.query.filter_by(
+                    bucketlist_id=bucketlist_id, id=item_id).one()
+                bucketlist_item.name = data['name']
+                bucketlist_item.date_modified = datetime.utcnow()
+                db.session.add(bucketlist_item)
+                db.session.commit()
+                modified_bucketlist_item = bucketlist_item_schema.dump(
+                    bucketlist_item)
+                return {'bucketlist': modified_bucketlist_item}, 201
+            except Exception as exception_message:
+                abort(500, message=exception_message)
+        else:
+            abort(403,
+                  message="User doesn't own bucketlist or " +
+                  "bucketlist doesn't exist")
 
     @jwt_required()
-    def delete(self):
-        pass
+    def delete(self, bucketlist_id, item_id):
+        if check_user_owns_bucketlist(
+                int(str(current_identity)), bucketlist_id):
+            pass
+        else:
+            abort(403,
+                  message="User doesn't own bucketlist or " +
+                  "bucketlist doesn't exist")
