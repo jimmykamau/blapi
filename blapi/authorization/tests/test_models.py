@@ -4,6 +4,7 @@ import unittest
 
 from app import app, db
 from blapi.authorization.models import User
+from blapi.authorization.tests.factories import UserFactory
 
 
 class TestAuthorizationModels(flask_testing.TestCase):
@@ -16,12 +17,14 @@ class TestAuthorizationModels(flask_testing.TestCase):
     def setUp(self):
         db.create_all()
 
+        factory_user = UserFactory.build()
         user_details = User(
-            full_name="John Doe",
-            email="john.doe@email.com",
-            password="mysecurepassword",
+            full_name=factory_user.full_name,
+            email=factory_user.email,
+            password=factory_user.password,
             active=True,
         )
+        app.config['db_user_details'] = factory_user
         db.session.add(user_details)
         db.session.commit()
 
@@ -31,10 +34,11 @@ class TestAuthorizationModels(flask_testing.TestCase):
         os.remove("test_bucketlist_models.sqlite")
 
     def test_create_user(self):
+        registered_user = app.config['db_user_details']
         self.assertEqual(
-            "john.doe@email.com",
+            registered_user.email,
             db.session.query(User).filter_by(
-                email="john.doe@email.com").one().email,
+                email=registered_user.email).one().email,
             msg="Cannot create user"
         )
 

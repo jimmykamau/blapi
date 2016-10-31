@@ -1,4 +1,5 @@
 from flask import request
+from flask_jwt import jwt_required
 from flask_restful import Resource, abort
 from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.security import generate_password_hash, \
@@ -24,6 +25,7 @@ def identity(payload):
 
 class Registration(Resource):
 
+    @jwt_required()
     def get(self, user_id):
         try:
             user = User.query.filter_by(id=user_id).one()
