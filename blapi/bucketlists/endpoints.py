@@ -1,7 +1,7 @@
 from datetime import datetime
 from flask import request
 from flask_jwt import jwt_required, current_identity
-from flask_restful import Resource, abort
+from flask_restful import Resource, abort, reqparse
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import db
@@ -28,11 +28,27 @@ class BucketlistControl(Resource):
 
     @jwt_required()
     def get(self, bucketlist_id=False):
+        parser = reqparse.RequestParser()
+        parser.add_argument(
+            'limit', type=int, help='Limit must be a number',
+            required=False, location='args')
+        parser.add_argument(
+            'q', type=str, help='Query must be a string',
+            required=False, location='args')
+        args = parser.parse_args()
         try:
-            bucketlists = Bucketlist.query.filter_by(
-                created_by=int(str(current_identity)), id=bucketlist_id).all()\
-                if bucketlist_id else Bucketlist.query.filter_by(
-                created_by=int(str(current_identity))).all()
+            if args['q'] is not None:
+                bucketlists = Bucketlist.query.filter(
+                    Bucketlist.name.ilike('%{}%'.format(args['q']))).limit(
+                    args['limit'] if args['limit'] is not None else 100).all()
+            else:
+                bucketlists = Bucketlist.query.filter_by(
+                    created_by=int(
+                        str(current_identity)), id=bucketlist_id).limit(
+                    args['limit'] if args['limit'] is not None else 100).all()\
+                    if bucketlist_id else Bucketlist.query.filter_by(
+                    created_by=int(str(current_identity))).limit(
+                    args['limit'] if args['limit'] is not None else 100).all()
             bucketlists_result = bucketlists_schema.dump(bucketlists)
             return {'bucketlists': bucketlists_result}, 200
         except NoResultFound:
@@ -126,9 +142,27 @@ class BucketlistItemControl(Resource):
     def get(self, bucketlist_id):
         if check_user_owns_bucketlist(
                 int(str(current_identity)), bucketlist_id):
+            parser = reqparse.RequestParser()
+            parser.add_argument(
+                'limit', type=int, help='Limit must be a number',
+                required=False, location='args')
+            parser.add_argument(
+                'q', type=str, help='Query must be a string',
+                required=False, location='args')
+            args = parser.parse_args()
             try:
-                bucketlist_items = BucketlistItems.query.filter_by(
-                    bucketlist_id=bucketlist_id).all()
+                if args['q'] is not None:
+                    bucketlist_items = BucketlistItems.query.filter(
+                        BucketlistItems.name.ilike(
+                            '%{}%'.format(args['q']))).filter_by(
+                        bucketlist_id=bucketlist_id).limit(
+                            args['limit'] if args['limit'] is not None
+                            else 100).all()
+                else:
+                    bucketlist_items = BucketlistItems.query.filter_by(
+                        bucketlist_id=bucketlist_id).limit(
+                            args['limit'] if args['limit'] is not None
+                            else 100).all()
                 bucketlist_items_result = \
                     bucketlist_items_schema.dump(bucketlist_items)
                 return {'bucketlist items': bucketlist_items_result}, 200
@@ -145,7 +179,7 @@ class BucketlistItemControl(Resource):
             if not json_data:
                 abort(400, message="Empty request")
 
-            data, errors = bucketlist_item_schema.load(json_data, partial=True)
+            data, errors = bucketlist_item_schema.load(json_data)
             if errors:
                 abort(422, message=errors)
 
