@@ -194,7 +194,7 @@ class BucketlistItemControl(Resource):
                 created_bucketlist_item = \
                     bucketlist_item_schema.dump(new_bucketlist_item)
                 return {
-                    'bucketlist': created_bucketlist_item
+                    'bucketlist items': created_bucketlist_item
                 }, 201
             except Exception as exception_message:
                 abort(500, message=exception_message)
@@ -225,7 +225,7 @@ class BucketlistItemControl(Resource):
                 db.session.commit()
                 modified_bucketlist_item = bucketlist_item_schema.dump(
                     bucketlist_item)
-                return {'bucketlist': modified_bucketlist_item}, 201
+                return {'bucketlist items': modified_bucketlist_item}, 201
             except Exception as exception_message:
                 abort(500, message=exception_message)
         else:

@@ -20,9 +20,10 @@ class TestAuthorization(flask_testing.TestCase):
 
     def setUp(self):
         db.create_all()
+        db.session.expire_on_commit = False
 
     def test_user_registration(self):
-        factory_user = UserFactory.build()
+        factory_user = UserFactory.create()
         self.user_details = {
             'full_name': factory_user.full_name,
             'email': factory_user.email,
