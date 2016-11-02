@@ -17,7 +17,7 @@ class TestAuthorizationModels(flask_testing.TestCase):
     def setUp(self):
         db.create_all()
 
-        factory_user = UserFactory.build()
+        factory_user = UserFactory()
         user_details = User(
             full_name=factory_user.full_name,
             email=factory_user.email,
@@ -35,11 +35,37 @@ class TestAuthorizationModels(flask_testing.TestCase):
 
     def test_create_user(self):
         registered_user = app.config['db_user_details']
+
         self.assertEqual(
             registered_user.email,
             db.session.query(User).filter_by(
                 email=registered_user.email).one().email,
             msg="Cannot create user"
+        )
+
+    def test_update_user(self):
+        current_user = User.query.filter_by(
+            full_name=app.config['db_user_details'].full_name).one()
+        current_user.full_name = "Updated Name"
+        db.session.add(current_user)
+        db.session.commit()
+
+        self.assertEqual(
+            "Updated Name",
+            User.query.filter_by(
+                email=app.config['db_user_details'].email).one().full_name
+        )
+
+    def test_delete_user(self):
+        current_user = User.query.filter_by(
+            full_name=app.config['db_user_details'].full_name).one()
+        db.session.delete(current_user)
+        db.session.commit()
+
+        self.assertEqual(
+            len(User.query.filter_by(
+                email=app.config['db_user_details'].email).all()),
+            0
         )
 
 

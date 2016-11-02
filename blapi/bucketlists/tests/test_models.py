@@ -5,7 +5,10 @@ import unittest
 
 from app import app, db
 from blapi.authorization.models import User
+from blapi.authorization.tests.factories import UserFactory
 from blapi.bucketlists.models import Bucketlist, BucketlistItems
+from blapi.bucketlists.tests.factories import \
+    BucketlistFactory, BucketlistItemsFactory
 
 
 class TestBucketlistModels(flask_testing.TestCase):
@@ -18,22 +21,41 @@ class TestBucketlistModels(flask_testing.TestCase):
     def setUp(self):
         db.create_all()
 
+        factory_user = UserFactory()
         user_details = User(
-            full_name="John Doe",
-            email="john.doe@email.com",
-            password="mysecurepassword",
+            full_name=factory_user.full_name,
+            email=factory_user.email,
+            password=factory_user.password,
             active=True,
         )
+        app.config['db_user_details'] = factory_user
         db.session.add(user_details)
         db.session.commit()
 
+        factory_user_db = User.query.filter_by(
+            full_name=factory_user.full_name).one()
+        created_bucketlist = BucketlistFactory()
         bucketlist = Bucketlist(
-            name="First bucketlist",
-            date_created=datetime.datetime.now(),
-            date_modified=datetime.datetime.now(),
-            created_by=user_details.id
+            name=created_bucketlist.name,
+            date_created=created_bucketlist.date_created,
+            date_modified=created_bucketlist.date_modified,
+            created_by=factory_user_db.id
         )
+        app.config['created_bucketlist'] = created_bucketlist
         db.session.add(bucketlist)
+        db.session.commit()
+
+        factory_bucketlist_item = BucketlistItemsFactory()
+        bucketlist_item = BucketlistItems(
+            name=factory_bucketlist_item.name,
+            date_created=factory_bucketlist_item.date_created,
+            date_modified=factory_bucketlist_item.date_modified,
+            done=factory_bucketlist_item.done,
+            bucketlist_id=Bucketlist.query.filter_by(
+                name=app.config['created_bucketlist'].name).one().id
+        )
+        app.config['bucketlist_item'] = factory_bucketlist_item
+        db.session.add(bucketlist_item)
         db.session.commit()
 
     def tearDown(self):
@@ -43,29 +65,65 @@ class TestBucketlistModels(flask_testing.TestCase):
 
     def test_create_bucketlist(self):
         self.assertEqual(
-            "First bucketlist",
-            db.session.query(Bucketlist).filter_by(
-                name="First bucketlist").one().name,
+            app.config['created_bucketlist'].name,
+            Bucketlist.query.filter_by(
+                name=app.config['created_bucketlist'].name).one().name,
             msg="Cannot create bucket-list"
         )
 
-    def test_create_bucketlist_item(self):
-        bucketlist_item = BucketlistItems(
-            name="First Bucketlist Item",
-            date_created=datetime.datetime.now(),
-            date_modified=datetime.datetime.now(),
-            done=False,
-            bucketlist_id=db.session.query(Bucketlist).filter_by(
-                name="First bucketlist").one().id
-        )
-        db.session.add(bucketlist_item)
+    def test_update_bucketlist(self):
+        current_bucketlist = Bucketlist.query.filter_by(
+            name=app.config['created_bucketlist'].name).one()
+        current_bucketlist.name = "My updated Bucketlist name"
+        db.session.add(current_bucketlist)
         db.session.commit()
 
         self.assertEqual(
-            "First Bucketlist Item",
-            db.session.query(BucketlistItems).filter_by(
-                name="First Bucketlist Item").one().name,
+            "My updated Bucketlist name",
+            Bucketlist.query.filter_by(
+                name=current_bucketlist.name).one().name
+        )
+
+    def test_create_bucketlist_item(self):
+        self.assertEqual(
+            app.config['bucketlist_item'].name,
+            BucketlistItems.query.filter_by(
+                name=app.config['bucketlist_item'].name).one().name,
             msg="Cannot create bucket-list item"
+        )
+
+    def test_update_bucketlist_item(self):
+        current_bucketlist_item = BucketlistItems.query.filter_by(
+            name=app.config['bucketlist_item'].name).one()
+        current_bucketlist_item.name = "Updated Bucketlist item name"
+        db.session.add(current_bucketlist_item)
+        db.session.commit()
+
+        self.assertEqual(
+            "Updated Bucketlist item name",
+            BucketlistItems.query.filter_by(
+                name=current_bucketlist_item.name).one().name
+        )
+
+    def test_zdelete_bucketlist_item(self):
+        current_bucketlist_item = BucketlistItems.query.one()
+        db.session.delete(current_bucketlist_item)
+        db.session.commit()
+
+        self.assertEqual(
+            len(BucketlistItems.query.all()),
+            0
+        )
+
+    def test_zdelete_bucketlist(self):
+        current_bucketlist = Bucketlist.query.filter_by(
+            name=app.config['created_bucketlist'].name).one()
+        db.session.delete(current_bucketlist)
+        db.session.commit()
+
+        self.assertEqual(
+            len(Bucketlist.query.all()),
+            0
         )
 
 

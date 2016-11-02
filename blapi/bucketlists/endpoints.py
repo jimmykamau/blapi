@@ -32,13 +32,22 @@ class BucketlistControl(Resource):
         parser.add_argument(
             'limit', type=int, help='Limit must be a number',
             required=False, location='args')
+        parser.add_argument(
+            'q', type=str, help='Query must be a string',
+            required=False, location='args')
         args = parser.parse_args()
         try:
-            bucketlists = Bucketlist.query.filter_by(
-                created_by=int(str(current_identity)), id=bucketlist_id).limit(
+            if args['q'] is not None:
+                bucketlists = Bucketlist.query.filter(
+                    Bucketlist.name.ilike('%{}%'.format(args['q']))).limit(
+                    args['limit'] if args['limit'] is not None else 100).all()
+            else:
+                bucketlists = Bucketlist.query.filter_by(
+                    created_by=int(
+                        str(current_identity)), id=bucketlist_id).limit(
                     args['limit'] if args['limit'] is not None else 100).all()\
-                if bucketlist_id else Bucketlist.query.filter_by(
-                created_by=int(str(current_identity))).limit(
+                    if bucketlist_id else Bucketlist.query.filter_by(
+                    created_by=int(str(current_identity))).limit(
                     args['limit'] if args['limit'] is not None else 100).all()
             bucketlists_result = bucketlists_schema.dump(bucketlists)
             return {'bucketlists': bucketlists_result}, 200
@@ -137,11 +146,23 @@ class BucketlistItemControl(Resource):
             parser.add_argument(
                 'limit', type=int, help='Limit must be a number',
                 required=False, location='args')
+            parser.add_argument(
+                'q', type=str, help='Query must be a string',
+                required=False, location='args')
             args = parser.parse_args()
             try:
-                bucketlist_items = BucketlistItems.query.filter_by(
-                    bucketlist_id=bucketlist_id).limit(
-                    args['limit'] if args['limit'] is not None else 100).all()
+                if args['q'] is not None:
+                    bucketlist_items = BucketlistItems.query.filter(
+                        BucketlistItems.name.ilike(
+                            '%{}%'.format(args['q']))).filter_by(
+                        bucketlist_id=bucketlist_id).limit(
+                            args['limit'] if args['limit'] is not None
+                            else 100).all()
+                else:
+                    bucketlist_items = BucketlistItems.query.filter_by(
+                        bucketlist_id=bucketlist_id).limit(
+                            args['limit'] if args['limit'] is not None
+                            else 100).all()
                 bucketlist_items_result = \
                     bucketlist_items_schema.dump(bucketlist_items)
                 return {'bucketlist items': bucketlist_items_result}, 200
@@ -173,7 +194,7 @@ class BucketlistItemControl(Resource):
                 created_bucketlist_item = \
                     bucketlist_item_schema.dump(new_bucketlist_item)
                 return {
-                    'bucketlist': created_bucketlist_item
+                    'bucketlist items': created_bucketlist_item
                 }, 201
             except Exception as exception_message:
                 abort(500, message=exception_message)
@@ -204,7 +225,7 @@ class BucketlistItemControl(Resource):
                 db.session.commit()
                 modified_bucketlist_item = bucketlist_item_schema.dump(
                     bucketlist_item)
-                return {'bucketlist': modified_bucketlist_item}, 201
+                return {'bucketlist items': modified_bucketlist_item}, 201
             except Exception as exception_message:
                 abort(500, message=exception_message)
         else:
